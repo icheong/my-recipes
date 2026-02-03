@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recipe Manager - GitHub Integrated</title>
+    <title>Recipe Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -59,12 +59,13 @@
             <div class="flex items-center gap-4">
                 <button @click="saveRecipe" class="hover:text-purple-600 transition-colors" title="Save File"><i class="ph ph-floppy-disk text-2xl"></i></button>
                 <button @click="$refs.fileInput.click()" class="hover:text-purple-600 transition-colors" title="Load File"><i class="ph ph-folder-open text-2xl"></i></button>
+                
                 <button @click="fetchGithubRecipes" class="hover:text-purple-600 transition-colors" title="Browse GitHub Recipes">
                     <i class="ph ph-github-logo text-2xl"></i>
                 </button>
+                
                 <input type="file" ref="fileInput" @change="loadRecipe" accept=".json" class="hidden">
             </div>
-            
             <div class="h-8 w-px bg-slate-200"></div>
             
             <div class="flex items-center gap-3">
@@ -133,9 +134,6 @@
                         </div>
                         <i class="ph ph-cloud-arrow-down text-purple-400 group-hover:translate-x-1 transition-transform text-xl"></i>
                     </li>
-                    <li v-if="githubFiles.length === 0" class="text-center py-8 text-slate-400 italic">
-                        No recipe files found in "recipes" folder.
-                    </li>
                 </ul>
             </div>
         </div>
@@ -145,13 +143,13 @@
         <div class="flex flex-col md:flex-row items-start md:items-center gap-6 mb-12">
             <div class="relative no-print group">
                 <div class="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-500 text-4xl shadow-inner">
-                    <i :class="categories.find(c => c.name === selectedCategory)?.icon || 'ph-cooking-pot'"></i>
+                    <i :class="categories.find(c => c.name === selectedCategory).icon"></i>
                 </div>
                 <select v-model="selectedCategory" class="absolute inset-0 opacity-0 cursor-pointer">
                     <option v-for="cat in categories" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
                 </select>
             </div>
-            <div class="flex flex-col flex-grow">
+            <div class="flex flex-col">
                 <span class="text-purple-400 font-bold uppercase tracking-[0.2em] text-xs ml-1">Recipe for...</span>
                 <input v-model="recipeTitle" placeholder="Untitled Recipe" class="text-5xl font-black w-full focus:outline-none border-b-2 border-transparent focus:border-purple-300 pb-2 transition-all bg-transparent">
             </div>
@@ -159,6 +157,26 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div class="space-y-10">
+                <section class="app-section">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 cursor-pointer group" @click="ui.showMise = !ui.showMise">
+                        <div class="flex items-center gap-3">
+                            <i class="ph text-xl text-purple-400 transition-transform" :class="ui.showMise ? 'ph-caret-down' : 'ph-caret-right'"></i>
+                            <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">Mise en Place</h2>
+                        </div>
+                        <button v-show="ui.showMise" @click.stop="addMise" class="text-purple-600 text-xs font-black no-print hover:underline">+ ADD TASK</button>
+                    </div>
+                    <div :class="{'section-collapsed': !ui.showMise}" class="section-content">
+                        <div id="mise-list">
+                            <div v-for="(item, index) in miseEnPlace" :key="item.id" class="drag-row group">
+                                <i class="ph ph-dots-six-vertical drag-handle text-xl no-print"></i>
+                                <input type="checkbox" v-model="item.done" class="w-5 h-5 rounded-full border-2 border-purple-200 text-purple-600 focus:ring-purple-500 transition-all">
+                                <input v-model="item.text" placeholder="Prep task..." :class="{'line-through text-slate-300': item.done}" class="flex-grow text-base outline-none bg-transparent border-b border-transparent focus:border-purple-200">
+                                <button @click="miseEnPlace.splice(index, 1)" class="text-red-300 hover:text-red-500 no-print opacity-0 group-hover:opacity-100 transition-opacity"><i class="ph ph-trash text-lg"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="app-section">
                     <div class="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 cursor-pointer group" @click="ui.showIng = !ui.showIng">
                         <div class="flex items-center gap-3">
@@ -213,6 +231,16 @@
                     </div>
                 </section>
 
+                <section class="app-section">
+                    <div class="flex items-center gap-3 mb-4 border-b border-slate-200 pb-3 cursor-pointer group" @click="ui.showNotes = !ui.showNotes">
+                        <i class="ph text-xl text-purple-400 transition-transform" :class="ui.showNotes ? 'ph-caret-down' : 'ph-caret-right'"></i>
+                        <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">Chef's Notes</h2>
+                    </div>
+                    <div :class="{'section-collapsed': !ui.showNotes}" class="section-content">
+                        <textarea v-model="recipeNotes" rows="4" placeholder="Add tips, variations or storage info..." class="w-full bg-white/50 border-2 border-slate-100 rounded-xl p-4 text-sm focus:border-purple-200 outline-none resize-none"></textarea>
+                    </div>
+                </section>
+
                 <div class="no-print pt-6 flex justify-center">
                     <div class="photo-card relative group cursor-pointer" @click="$refs.photoInput.click()">
                         <img v-if="recipePhoto" :src="recipePhoto" class="w-full h-full object-cover rounded-sm">
@@ -221,7 +249,6 @@
                             <span class="text-[10px] font-black uppercase mt-2">Add Food Photo</span>
                         </div>
                         <input type="file" ref="photoInput" @change="handlePhoto" accept="image/*" class="hidden">
-                        <button v-if="recipePhoto" @click.stop="recipePhoto = null" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><i class="ph ph-x text-xs"></i></button>
                     </div>
                 </div>
             </div>
@@ -240,6 +267,10 @@ createApp({
             scale: 1,
             unitSystem: 'metric',
             recipePhoto: null,
+            recipeNotes: '',
+            miseEnPlace: [
+                { id: 1, text: 'Sample prep task', done: false }
+            ],
             ingredients: [
                 { id: 1, name: 'Sample Ingredient', amount: 100, unit: 'g' }
             ],
@@ -248,8 +279,10 @@ createApp({
             ],
             githubFiles: [],
             ui: {
+                showMise: true,
                 showIng: true,
                 showMet: true,
+                showNotes: true,
                 showGithubModal: false,
                 loadingGithub: false
             },
@@ -264,6 +297,7 @@ createApp({
         }
     },
     mounted() {
+        this.initSortable('mise-list', 'miseEnPlace');
         this.initSortable('ingredient-list', 'ingredients');
         this.initSortable('method-list', 'methods');
     },
@@ -288,7 +322,8 @@ createApp({
                 const response = await fetch(url);
                 const recipeData = await response.json();
                 
-                // Safety check for ID generation
+                // Safety check for ID generation to ensure sortable works
+                recipeData.miseEnPlace?.forEach(m => m.id = m.id || Date.now() + Math.random());
                 recipeData.ingredients?.forEach(i => i.id = i.id || Date.now() + Math.random());
                 recipeData.methods?.forEach(m => m.id = m.id || Date.now() + Math.random());
 
@@ -299,6 +334,9 @@ createApp({
                 alert("Error loading recipe: " + error.message);
             }
         },
+        addMise() {
+            this.miseEnPlace.push({ id: Date.now(), text: '', done: false });
+        },
         addIngredient() {
             this.ingredients.push({ id: Date.now(), name: '', amount: 0, unit: 'g' });
         },
@@ -306,8 +344,10 @@ createApp({
             this.methods.push({ id: Date.now(), text: '' });
         },
         toggleAll(state) {
+            this.ui.showMise = state;
             this.ui.showIng = state;
             this.ui.showMet = state;
+            this.ui.showNotes = state;
         },
         isQualitative(unit) {
             return ['pinch', 'to taste', 'a bit'].includes(unit);
@@ -323,7 +363,7 @@ createApp({
             let val = (parseFloat(base) || 0) * this.scale;
             if (this.unitSystem === 'imperial') {
                 if (unit === 'g') val *= 0.035274;
-                if (unit === 'kg') val *= 35.274;
+                if (unit === 'kg') val *= 2.20462;
                 if (unit === 'ml') val *= 0.033814;
                 if (unit === 'l') val *= 33.814;
             }
