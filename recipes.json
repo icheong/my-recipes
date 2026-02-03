@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Chinese Egg Drop Soup",
+    "path": "recipes/chinese_egg-drop_soup.json"
+  },
+  {
+    "name": "Tamago Sando",
+    "path": "recipes/tamago_sando.json"
+  }
+]
