@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recipe Manager</title>
+    <title>Recipe Manager - GitHub Integrated</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -32,7 +32,6 @@
             pointer-events: none;
         }
 
-        /* Polaroid Image Style */
         .photo-card {
             aspect-ratio: 1/1;
             background: white;
@@ -60,21 +59,12 @@
             <div class="flex items-center gap-4">
                 <button @click="saveRecipe" class="hover:text-purple-600 transition-colors" title="Save File"><i class="ph ph-floppy-disk text-2xl"></i></button>
                 <button @click="$refs.fileInput.click()" class="hover:text-purple-600 transition-colors" title="Load File"><i class="ph ph-folder-open text-2xl"></i></button>
-                
-                <div class="relative inline-block ml-2">
-                    <select @change="fetchGitHubRecipe($event.target.value)" class="appearance-none bg-purple-50 border-none rounded-lg py-1.5 pl-3 pr-8 text-sm font-bold text-purple-700 cursor-pointer focus:ring-2 focus:ring-purple-300">
-                        <option value="" disabled selected>📜 Online Recipes</option>
-                        <option v-for="file in githubRecipes" :key="file.path" :value="file.download_url">
-                            {{ file.name.replace('.json', '') }}
-                        </option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-700">
-                        <i class="ph ph-caret-down"></i>
-                    </div>
-                </div>
-
+                <button @click="fetchGithubRecipes" class="hover:text-purple-600 transition-colors" title="Browse GitHub Recipes">
+                    <i class="ph ph-github-logo text-2xl"></i>
+                </button>
                 <input type="file" ref="fileInput" @change="loadRecipe" accept=".json" class="hidden">
             </div>
+            
             <div class="h-8 w-px bg-slate-200"></div>
             
             <div class="flex items-center gap-3">
@@ -118,12 +108,44 @@
         </div>
     </div>
 
+    <div v-if="ui.showGithubModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="p-6 border-b flex justify-between items-center bg-purple-50">
+                <h3 class="font-bold text-purple-800 flex items-center gap-2">
+                    <i class="ph ph-github-logo"></i> Repository Recipes
+                </h3>
+                <button @click="ui.showGithubModal = false" class="text-slate-400 hover:text-black">
+                    <i class="ph ph-x-circle text-2xl"></i>
+                </button>
+            </div>
+            <div class="max-h-96 overflow-y-auto p-4">
+                <div v-if="ui.loadingGithub" class="flex flex-col items-center justify-center py-12 gap-4">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
+                    <span class="text-slate-400 font-medium">Fetching from icheong/my-recipes...</span>
+                </div>
+                <ul v-else class="space-y-2">
+                    <li v-for="file in githubFiles" :key="file.sha" 
+                        @click="loadGithubFile(file.download_url)"
+                        class="p-4 hover:bg-purple-100 rounded-xl cursor-pointer transition-colors flex justify-between items-center group border border-slate-50">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-slate-700">{{ file.name.replace('.json', '') }}</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-black">JSON RECIPE</span>
+                        </div>
+                        <i class="ph ph-cloud-arrow-down text-purple-400 group-hover:translate-x-1 transition-transform text-xl"></i>
+                    </li>
+                    <li v-if="githubFiles.length === 0" class="text-center py-8 text-slate-400 italic">
+                        No recipe files found in "recipes" folder.
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div class="card bg-white shadow-2xl rounded-[40px] p-10 md:p-16 border border-white/50 relative overflow-hidden">
-        
         <div class="flex flex-col md:flex-row items-start md:items-center gap-6 mb-12">
             <div class="relative no-print group">
                 <div class="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-500 text-4xl shadow-inner">
-                    <i :class="categories.find(c => c.name === selectedCategory).icon"></i>
+                    <i :class="categories.find(c => c.name === selectedCategory)?.icon || 'ph-cooking-pot'"></i>
                 </div>
                 <select v-model="selectedCategory" class="absolute inset-0 opacity-0 cursor-pointer">
                     <option v-for="cat in categories" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
@@ -137,31 +159,6 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div class="space-y-10">
-                
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="photo-card relative group cursor-pointer" @click="$refs.photoInput.click()">
-                        <div class="w-full h-full bg-slate-50 rounded-sm overflow-hidden flex items-center justify-center">
-                            <img v-if="recipeImage" :src="recipeImage" class="w-full h-full object-cover">
-                            <div v-else class="text-slate-300 flex flex-col items-center">
-                                <i class="ph ph-camera text-4xl"></i>
-                                <span class="text-[10px] font-bold mt-2">ADD PHOTO</span>
-                            </div>
-                        </div>
-                        <input type="file" ref="photoInput" @change="handleImage" accept="image/*" class="hidden">
-                    </div>
-                    
-                    <div class="flex flex-col justify-center gap-4">
-                        <div class="bg-purple-50 p-4 rounded-2xl">
-                            <span class="text-[10px] font-black uppercase text-purple-400 block mb-1">Prep Time</span>
-                            <input v-model="prepTime" placeholder="20 mins" class="bg-transparent font-bold text-purple-700 outline-none w-full">
-                        </div>
-                        <div class="bg-orange-50 p-4 rounded-2xl">
-                            <span class="text-[10px] font-black uppercase text-orange-400 block mb-1">Cook Time</span>
-                            <input v-model="cookTime" placeholder="45 mins" class="bg-transparent font-bold text-orange-700 outline-none w-full">
-                        </div>
-                    </div>
-                </div>
-
                 <section class="app-section">
                     <div class="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 cursor-pointer group" @click="ui.showIng = !ui.showIng">
                         <div class="flex items-center gap-3">
@@ -175,7 +172,7 @@
                             <div v-for="(ing, index) in ingredients" :key="ing.id" class="drag-row group">
                                 <i class="ph ph-dots-six-vertical drag-handle text-xl no-print"></i>
                                 <div class="w-20 text-right font-mono font-bold text-lg text-purple-600">
-                                    {{ isQualitative(ing.unit) ? '' : calculateAmount(ing.amount, ing.unit) }}
+                                    {{ isQualitative(ing.unit) ? '' : formatToFraction(calculateAmount(ing.amount, ing.unit)) }}
                                 </div>
                                 <div :class="isQualitative(ing.unit) ? 'w-36' : 'w-16'" class="text-sm font-black text-slate-800 uppercase">
                                     {{ getDisplayUnit(ing.unit) }}
@@ -197,189 +194,188 @@
 
             <div class="space-y-10">
                 <section class="app-section">
-                    <div class="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 cursor-pointer group" @click="ui.showIns = !ui.showIns">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 cursor-pointer group" @click="ui.showMet = !ui.showMet">
                         <div class="flex items-center gap-3">
-                            <i class="ph text-xl text-purple-400 transition-transform" :class="ui.showIns ? 'ph-caret-down' : 'ph-caret-right'"></i>
+                            <i class="ph text-xl text-purple-400 transition-transform" :class="ui.showMet ? 'ph-caret-down' : 'ph-caret-right'"></i>
                             <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">Method</h2>
                         </div>
-                        <button v-show="ui.showIns" @click.stop="addInstruction" class="text-purple-600 text-xs font-black no-print hover:underline">+ ADD STEP</button>
+                        <button v-show="ui.showMet" @click.stop="addMethod" class="text-purple-600 text-xs font-black no-print hover:underline">+ ADD STEP</button>
                     </div>
-                    <div :class="{'section-collapsed': !ui.showIns}" class="section-content">
-                        <div id="instruction-list">
-                            <div v-for="(ins, index) in instructions" :key="ins.id" class="drag-row group items-start">
-                                <i class="ph ph-dots-six-vertical drag-handle text-xl no-print mt-1"></i>
-                                <div class="flex flex-col gap-1 flex-grow">
-                                    <input v-model="ins.title" placeholder="Step Title (Optional)" class="text-xs font-black text-purple-400 uppercase tracking-widest focus:outline-none bg-transparent">
-                                    <textarea v-model="ins.text" placeholder="Explain what to do..." class="w-full text-base outline-none bg-transparent resize-none overflow-hidden" rows="2" @input="e => {e.target.style.height='auto'; e.target.style.height=e.target.scrollHeight+'px'}"></textarea>
-                                </div>
-                                <button @click="instructions.splice(index, 1)" class="text-red-300 hover:text-red-500 no-print opacity-0 group-hover:opacity-100 transition-opacity"><i class="ph ph-trash text-lg"></i></button>
+                    <div :class="{'section-collapsed': !ui.showMet}" class="section-content">
+                        <div id="method-list" class="space-y-4">
+                            <div v-for="(step, index) in methods" :key="step.id" class="drag-row group items-start">
+                                <i class="ph ph-dots-six-vertical drag-handle text-xl mt-1 no-print"></i>
+                                <div class="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center flex-shrink-0 font-bold text-sm">{{ index + 1 }}</div>
+                                <textarea v-model="step.text" rows="2" placeholder="Describe this step..." class="flex-grow bg-transparent outline-none resize-none border-b border-transparent focus:border-purple-200 py-1"></textarea>
+                                <button @click="methods.splice(index, 1)" class="text-red-300 hover:text-red-500 mt-1 no-print opacity-0 group-hover:opacity-100"><i class="ph ph-trash text-lg"></i></button>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section class="app-section">
-                    <div class="flex items-center gap-3 mb-4 border-b border-slate-200 pb-3 cursor-pointer" @click="ui.showNotes = !ui.showNotes">
-                        <i class="ph text-xl text-purple-400 transition-transform" :class="ui.showNotes ? 'ph-caret-down' : 'ph-caret-right'"></i>
-                        <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">Chef's Notes</h2>
+                <div class="no-print pt-6 flex justify-center">
+                    <div class="photo-card relative group cursor-pointer" @click="$refs.photoInput.click()">
+                        <img v-if="recipePhoto" :src="recipePhoto" class="w-full h-full object-cover rounded-sm">
+                        <div v-else class="w-full h-full border-2 border-dashed border-slate-200 rounded-sm flex flex-col items-center justify-center text-slate-300">
+                            <i class="ph ph-image text-4xl"></i>
+                            <span class="text-[10px] font-black uppercase mt-2">Add Food Photo</span>
+                        </div>
+                        <input type="file" ref="photoInput" @change="handlePhoto" accept="image/*" class="hidden">
+                        <button v-if="recipePhoto" @click.stop="recipePhoto = null" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><i class="ph ph-x text-xs"></i></button>
                     </div>
-                    <div :class="{'section-collapsed': !ui.showNotes}" class="section-content">
-                        <textarea v-model="chefNotes" placeholder="Any extra tips or variations..." class="w-full bg-transparent text-slate-600 italic outline-none min-h-[100px] resize-none"></textarea>
-                    </div>
-                </section>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    const { createApp } = Vue;
+const { createApp } = Vue;
 
-    createApp({
-        data() {
-            return {
-                recipeTitle: '',
-                selectedCategory: 'Main',
-                recipeImage: null,
-                prepTime: '',
-                cookTime: '',
-                chefNotes: '',
-                scale: 1,
-                unitSystem: 'metric',
-                githubRecipes: [],
-                repoPath: 'https://api.github.com/repos/icheong/my-recipes/contents/recipes',
-                categories: [
-                    { name: 'Breakfast', icon: 'ph-coffee' },
-                    { name: 'Main', icon: 'ph-bowl-food' },
-                    { name: 'Dessert', icon: 'ph-cookie' },
-                    { name: 'Drinks', icon: 'ph-wine' }
-                ],
-                ingredients: [
-                    { id: Date.now(), name: 'Example Ingredient', amount: 100, unit: 'g' }
-                ],
-                instructions: [
-                    { id: Date.now() + 1, title: 'First Step', text: 'Start cooking here...' }
-                ],
-                ui: {
-                    showIng: true,
-                    showIns: true,
-                    showNotes: true
-                }
-            }
-        },
-        mounted() {
-            this.initSortable('ingredient-list', 'ingredients');
-            this.initSortable('instruction-list', 'instructions');
-            this.listGitHubRecipes();
-        },
-        methods: {
-            async listGitHubRecipes() {
-                try {
-                    const response = await fetch(this.repoPath);
-                    const files = await response.json();
-                    if (Array.isArray(files)) {
-                        this.githubRecipes = files.filter(file => file.name.endsWith('.json'));
-                    }
-                } catch (error) {
-                    console.error("Error fetching recipe list:", error);
-                }
+createApp({
+    data() {
+        return {
+            recipeTitle: 'New Delicious Recipe',
+            selectedCategory: 'Mains',
+            scale: 1,
+            unitSystem: 'metric',
+            recipePhoto: null,
+            ingredients: [
+                { id: 1, name: 'Sample Ingredient', amount: 100, unit: 'g' }
+            ],
+            methods: [
+                { id: 1, text: 'This is the first step of your recipe.' }
+            ],
+            githubFiles: [],
+            ui: {
+                showIng: true,
+                showMet: true,
+                showGithubModal: false,
+                loadingGithub: false
             },
-            async fetchGitHubRecipe(url) {
-                if (!url) return;
-                try {
-                    const response = await fetch(url);
-                    const data = await response.json();
-                    Object.assign(this, data);
-                    this.scale = 1; // Reset scale on load
-                } catch (error) {
-                    alert("Failed to load recipe from GitHub.");
-                    console.error(error);
-                }
-            },
-            initSortable(id, listName) {
-                new Sortable(document.getElementById(id), {
-                    animation: 150,
-                    handle: '.drag-handle',
-                    ghostClass: 'sortable-ghost',
-                    onEnd: (evt) => {
-                        const item = this[listName].splice(evt.oldIndex, 1)[0];
-                        this[listName].splice(evt.newIndex, 0, item);
-                    }
-                });
-            },
-            handleImage(e) {
-                const reader = new FileReader();
-                reader.onload = (event) => this.recipeImage = event.target.result;
-                reader.readAsDataURL(e.target.files[0]);
-            },
-            addIngredient() {
-                this.ingredients.push({ id: Date.now(), name: '', amount: 0, unit: 'g' });
-            },
-            addInstruction() {
-                this.instructions.push({ id: Date.now(), title: '', text: '' });
-            },
-            toggleAll(show) {
-                this.ui.showIng = show;
-                this.ui.showIns = show;
-                this.ui.showNotes = show;
-            },
-            saveRecipe() {
-                const data = JSON.stringify({
-                    recipeTitle: this.recipeTitle,
-                    selectedCategory: this.selectedCategory,
-                    recipeImage: this.recipeImage,
-                    prepTime: this.prepTime,
-                    cookTime: this.cookTime,
-                    chefNotes: this.chefNotes,
-                    ingredients: this.ingredients,
-                    instructions: this.instructions
-                }, null, 2);
-                const blob = new Blob([data], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `${this.recipeTitle || 'recipe'}.json`;
-                link.click();
-            },
-            loadRecipe(e) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const data = JSON.parse(event.target.result);
-                    Object.assign(this, data);
-                };
-                reader.readAsText(e.target.files[0]);
-            },
-            isQualitative(unit) {
-                return ['pinch', 'to taste', 'a bit', 'pcs'].includes(unit);
-            },
-            getDisplayUnit(unit) {
-                if (this.unitSystem === 'metric') return unit;
-                const conv = { 'g': 'oz', 'kg': 'lb', 'ml': 'fl oz', 'l': 'gal' };
-                return conv[unit] || unit;
-            },
-            formatToFraction(val) {
-                if (val === 0) return '';
-                if (Math.abs(val - Math.round(val)) < 0.01) return Math.round(val);
-                const whole = Math.floor(val);
-                const remainder = val - whole;
-                const fracs = [{d:0.5,s:"1/2"},{d:0.25,s:"1/4"},{d:0.75,s:"3/4"},{d:0.33,s:"1/3"},{d:0.66,s:"2/3"},{d:0.125,s:"1/8"}];
-                const match = fracs.find(f => Math.abs(remainder - f.d) < 0.03);
-                if (match) return whole > 0 ? `${whole} ${match.s}` : match.s;
-                return parseFloat(val.toFixed(2));
-            },
-            calculateAmount(base, unit) {
-                let val = (parseFloat(base) || 0) * this.scale;
-                if (this.unitSystem === 'imperial') {
-                    if (unit === 'g') val *= 0.035274;
-                    if (unit === 'kg') val *= 2.20462;
-                    if (unit === 'ml') val *= 0.033814;
-                    if (unit === 'l') val *= 0.264172;
-                }
-                return this.formatToFraction(val);
-            }
+            categories: [
+                { name: 'Mains', icon: 'ph-cooking-pot' },
+                { name: 'Baking', icon: 'ph-cookie' },
+                { name: 'Breakfast', icon: 'ph-egg' },
+                { name: 'Desserts', icon: 'ph-ice-cream' },
+                { name: 'Drinks', icon: 'ph-brandy' },
+                { name: 'Sauces', icon: 'ph-drop' }
+            ]
         }
-    }).mount('#app');
-</script>
+    },
+    mounted() {
+        this.initSortable('ingredient-list', 'ingredients');
+        this.initSortable('method-list', 'methods');
+    },
+    methods: {
+        async fetchGithubRecipes() {
+            this.ui.showGithubModal = true;
+            this.ui.loadingGithub = true;
+            try {
+                const response = await fetch('https://api.github.com/repos/icheong/my-recipes/contents/recipes');
+                if (!response.ok) throw new Error('Could not fetch repository contents');
+                const data = await response.json();
+                this.githubFiles = data.filter(file => file.name.endsWith('.json'));
+            } catch (error) {
+                alert("GitHub Error: " + error.message);
+                this.ui.showGithubModal = false;
+            } finally {
+                this.ui.loadingGithub = false;
+            }
+        },
+        async loadGithubFile(url) {
+            try {
+                const response = await fetch(url);
+                const recipeData = await response.json();
+                
+                // Safety check for ID generation
+                recipeData.ingredients?.forEach(i => i.id = i.id || Date.now() + Math.random());
+                recipeData.methods?.forEach(m => m.id = m.id || Date.now() + Math.random());
 
+                Object.assign(this.$data, recipeData);
+                this.ui.showGithubModal = false;
+                this.toggleAll(true);
+            } catch (error) {
+                alert("Error loading recipe: " + error.message);
+            }
+        },
+        addIngredient() {
+            this.ingredients.push({ id: Date.now(), name: '', amount: 0, unit: 'g' });
+        },
+        addMethod() {
+            this.methods.push({ id: Date.now(), text: '' });
+        },
+        toggleAll(state) {
+            this.ui.showIng = state;
+            this.ui.showMet = state;
+        },
+        isQualitative(unit) {
+            return ['pinch', 'to taste', 'a bit'].includes(unit);
+        },
+        getDisplayUnit(unit) {
+            if (this.unitSystem === 'imperial') {
+                if (unit === 'g' || unit === 'kg') return 'oz';
+                if (unit === 'ml' || unit === 'l') return 'fl oz';
+            }
+            return unit;
+        },
+        calculateAmount(base, unit) {
+            let val = (parseFloat(base) || 0) * this.scale;
+            if (this.unitSystem === 'imperial') {
+                if (unit === 'g') val *= 0.035274;
+                if (unit === 'kg') val *= 35.274;
+                if (unit === 'ml') val *= 0.033814;
+                if (unit === 'l') val *= 33.814;
+            }
+            return val;
+        },
+        formatToFraction(val) {
+            if (val === 0) return '';
+            if (Math.abs(val - Math.round(val)) < 0.01) return Math.round(val);
+            const whole = Math.floor(val);
+            const remainder = val - whole;
+            const fracs = [{d:0.5,s:"1/2"},{d:0.25,s:"1/4"},{d:0.75,s:"3/4"},{d:0.33,s:"1/3"},{d:0.66,s:"2/3"},{d:0.125,s:"1/8"}];
+            const match = fracs.find(f => Math.abs(remainder - f.d) < 0.03);
+            if (match) return whole > 0 ? `${whole} ${match.s}` : match.s;
+            return parseFloat(val.toFixed(2));
+        },
+        saveRecipe() {
+            const data = JSON.stringify(this.$data, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${this.recipeTitle || 'recipe'}.json`;
+            link.click();
+        },
+        loadRecipe(e) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const data = JSON.parse(event.target.result);
+                Object.assign(this, data);
+            };
+            reader.readAsText(e.target.files[0]);
+        },
+        handlePhoto(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => this.recipePhoto = event.target.result;
+                reader.readAsDataURL(file);
+            }
+        },
+        initSortable(id, key) {
+            new Sortable(document.getElementById(id), {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: (evt) => {
+                    const item = this[key].splice(evt.oldIndex, 1)[0];
+                    this[key].splice(evt.newIndex, 0, item);
+                }
+            });
+        }
+    }
+}).mount('#app');
+</script>
 </body>
 </html>
