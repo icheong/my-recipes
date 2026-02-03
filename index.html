@@ -54,7 +54,7 @@
 <body>
 
 <div id="app" v-cloak class="max-w-[1550px] mx-auto p-6 md:p-10">
-
+    
     <div v-if="ui.showRepoBrowser" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
         <div class="bg-white rounded-[32px] p-8 max-w-lg w-full shadow-2xl border border-white">
             <div class="flex justify-between items-center mb-6">
@@ -64,16 +64,12 @@
                 </div>
                 <button @click="ui.showRepoBrowser = false" class="text-slate-400 hover:text-black"><i class="ph ph-x text-2xl"></i></button>
             </div>
-            
             <div v-if="repoRecipes.length === 0" class="py-12 text-center">
                 <i class="ph ph-spinner animate-spin text-4xl text-purple-400"></i>
                 <p class="mt-4 text-slate-500 font-medium">Fetching recipes...</p>
             </div>
-
             <div v-else class="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-                <div v-for="file in repoRecipes" :key="file.sha" 
-                     @click="loadFromGithub(file.download_url)"
-                     class="group p-4 rounded-2xl border border-slate-100 hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition-all flex items-center justify-between">
+                <div v-for="file in repoRecipes" :key="file.sha" @click="loadFromGithub(file.download_url)" class="group p-4 rounded-2xl border border-slate-100 hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition-all flex items-center justify-between">
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 bg-slate-100 group-hover:bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:text-purple-500 transition-colors">
                             <i class="ph ph-file-json text-xl"></i>
@@ -91,7 +87,7 @@
             <div class="flex items-center gap-4">
                 <button @click="saveRecipe" class="hover:text-purple-600 transition-colors" title="Save File"><i class="ph ph-floppy-disk text-2xl"></i></button>
                 <button @click="$refs.fileInput.click()" class="hover:text-purple-600 transition-colors" title="Load File"><i class="ph ph-folder-open text-2xl"></i></button>
-                <button @click="fetchRepoRecipes" class="hover:text-purple-600 transition-colors" title="Browse Cloud Recipes"><i class="ph ph-cloud-arrow-down text-2xl"></i></button>
+                <button @click="fetchRepoRecipes" class="hover:text-purple-600 transition-colors" title="Browse Cloud"><i class="ph ph-cloud-arrow-down text-2xl"></i></button>
                 <input type="file" ref="fileInput" @change="loadRecipe" accept=".json" class="hidden">
             </div>
             <div class="h-8 w-px bg-slate-200"></div>
@@ -278,7 +274,7 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
-            githubRepo: 'icheong/my-recipes', // UPDATE THIS
+            githubRepo: 'YOUR_USERNAME/YOUR_REPO_NAME',
             recipeTitle: '',
             scale: 1,
             unitSystem: 'metric',
@@ -374,11 +370,11 @@ createApp({
                 if (Array.isArray(data)) {
                     this.repoRecipes = data.filter(f => f.name.endsWith('.json'));
                 } else {
-                    alert("Ensure you have a 'recipes' folder in your repository.");
+                    alert("Ensure you have a 'recipes' folder in your repo.");
                     this.ui.showRepoBrowser = false;
                 }
             } catch (e) {
-                alert("Error connecting to GitHub. Check your githubRepo setting.");
+                alert("Error connecting to GitHub. Check your repo path.");
                 this.ui.showRepoBrowser = false;
             }
         },
