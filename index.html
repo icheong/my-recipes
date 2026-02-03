@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recipe Manager Pro</title>
+    <title>Recipe Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -14,67 +14,39 @@
             background-color: #e9e5f3; 
             background-image: url("https://www.transparenttextures.com/patterns/food.png"); 
             color: #334155; 
-            scroll-behavior: smooth;
         }
-        .app-section { background-color: #fcfaf2; border-radius: 20px; padding: 24px; border: 1px solid #f0ede4; margin-bottom: 2rem; }
+        .app-section { background-color: #fcfaf2; border-radius: 20px; padding: 24px; border: 1px solid #f0ede4; }
         
-        .library-dropdown {
-            position: fixed;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10000;
-            width: 90%;
-            max-width: 400px;
-            background: white;
-            border-radius: 1.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-        
-        .overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 9999;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(8px);
-        }
-
         .photo-card {
             aspect-ratio: 1/1; background: white; padding: 10px 10px 30px 10px;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); transform: rotate(-1deg); transition: transform 0.2s;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); transform: rotate(-1.5deg);
         }
-        .photo-card:hover { transform: rotate(0deg) scale(1.05); }
 
         @media print {
             .no-print { display: none !important; }
+            .card { box-shadow: none !important; border: none !important; background: white !important; }
             body { background: white !important; }
-            .card { box-shadow: none !important; border: none !important; }
         }
     </style>
 </head>
 <body>
 
-<div id="app" v-cloak class="max-w-[1550px] mx-auto p-4 md:p-10">
-    <div v-if="ui.showLibraryMenu" class="overlay" @click="ui.showLibraryMenu = false"></div>
-
-    <div class="flex flex-wrap justify-between items-center mb-8 gap-4 no-print bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-xl border border-white/50 sticky top-4 z-[50]">
-        <div class="flex items-center gap-6">
-            <div class="flex items-center gap-4">
-                <button @click="saveRecipe" class="hover:text-purple-600 transition-colors" title="Save to Device"><i class="ph ph-floppy-disk text-2xl"></i></button>
-                <button @click="$refs.fileInput.click()" class="hover:text-purple-600 transition-colors" title="Open File"><i class="ph ph-folder-open text-2xl"></i></button>
-                <button @click="toggleLibrary" class="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition-all shadow-lg shadow-purple-200">
-                    <i class="ph ph-books text-xl"></i>
-                    <span class="text-xs font-bold uppercase tracking-wider">Library</span>
-                </button>
-            </div>
+<div id="app" v-cloak class="max-w-[1400px] mx-auto p-6 md:p-10">
+    <div class="flex justify-between items-center mb-8 no-print bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-white">
+        <div class="flex items-center gap-4">
+            <button @click="saveRecipe" class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 transition-all">
+                <i class="ph ph-floppy-disk"></i> Save JSON
+            </button>
+            <button @click="$refs.fileInput.click()" class="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-bold hover:bg-slate-200 transition-all">
+                <i class="ph ph-folder-open"></i> Load JSON
+            </button>
             <input type="file" ref="fileInput" @change="loadRecipe" accept=".json" class="hidden">
         </div>
-
+        
         <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-                <span class="text-[10px] font-black px-2 uppercase text-slate-400">Yield</span>
-                <select v-model="scale" class="bg-white border-none rounded-md py-1 px-3 text-sm font-bold text-purple-700 shadow-sm">
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-black uppercase text-slate-400">Scale</span>
+                <select v-model="scale" class="bg-white border rounded-md py-1 px-2 text-sm font-bold text-purple-700">
                     <option :value="0.5">0.5x</option>
                     <option :value="1">1x</option>
                     <option :value="2">2x</option>
@@ -82,98 +54,76 @@
             </div>
             <button onclick="window.print()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-printer text-2xl"></i></button>
         </div>
-
-        <div v-if="ui.showLibraryMenu" class="library-dropdown p-6 animate-in fade-in zoom-in-95">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-black uppercase text-slate-800">Your Cookbook</h3>
-                <button @click="ui.showLibraryMenu = false" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x-circle text-2xl"></i></button>
-            </div>
-            
-            <div class="relative mb-6">
-                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input v-model="searchQuery" type="text" placeholder="Search recipes..." 
-                       class="w-full bg-slate-100 border-none rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-purple-300 outline-none">
-            </div>
-
-            <div class="max-h-[400px] overflow-y-auto space-y-2">
-                <div v-if="loadingLibrary" class="text-center py-10"><i class="ph ph-circle-notch animate-spin text-3xl text-purple-500"></i></div>
-                <button v-for="r in filteredLibrary" :key="r.path" @click="fetchFromGithub(r.path)" 
-                        class="w-full text-left p-4 hover:bg-purple-50 rounded-xl text-sm font-bold text-slate-700 flex items-center justify-between group">
-                    {{ r.name }}
-                    <i class="ph ph-arrow-right opacity-0 group-hover:opacity-100 transition-all"></i>
-                </button>
-            </div>
-        </div>
     </div>
 
-    <div class="bg-white shadow-2xl rounded-[40px] p-8 md:p-16 border border-white/50">
-        <div class="flex flex-col md:flex-row items-start gap-8 mb-12">
-            <div class="w-24 h-24 bg-purple-100 rounded-3xl flex items-center justify-center text-purple-500 text-5xl shadow-inner no-print">
-                <i :class="categories.find(c => c.name === selectedCategory)?.icon || 'ph ph-cooking-pot'"></i>
-            </div>
-            <div class="flex-grow w-full">
-                <input v-model="recipeTitle" placeholder="Recipe Name..." class="text-4xl md:text-6xl font-black w-full focus:outline-none bg-transparent mb-2">
-                <div class="flex gap-4 no-print">
-                    <select v-model="selectedCategory" class="text-xs font-bold uppercase tracking-widest text-purple-500 bg-purple-50 px-3 py-1 rounded-full outline-none">
-                        <option v-for="cat in categories" :value="cat.name">{{ cat.name }}</option>
-                    </select>
+    <div class="card bg-white shadow-2xl rounded-[40px] p-10 md:p-16 border border-white/50 relative">
+        <div class="flex flex-col md:flex-row items-start md:items-center gap-8 mb-12">
+            <div class="relative group no-print">
+                <div class="w-24 h-24 bg-purple-100 rounded-3xl flex items-center justify-center text-purple-500 text-5xl shadow-inner">
+                    <i :class="categories.find(c => c.name === selectedCategory)?.icon || 'ph ph-cooking-pot'"></i>
                 </div>
+                <select v-model="selectedCategory" class="absolute inset-0 opacity-0 cursor-pointer">
+                    <option v-for="cat in categories" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
+                </select>
+            </div>
+            <div class="flex-grow">
+                <span class="text-purple-400 font-bold uppercase tracking-[0.2em] text-xs">Recipe Name</span>
+                <input v-model="recipeTitle" placeholder="Untitled Recipe" class="text-5xl font-black w-full focus:outline-none bg-transparent block">
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div class="space-y-8">
+            <div class="space-y-10">
                 <section class="app-section">
-                    <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-3">Mise en Place (Prep)</h2>
-                    <div v-for="(item, idx) in miseEnPlace" :key="idx" class="flex gap-3 mb-2 items-center">
-                        <input type="checkbox" class="w-5 h-5 rounded accent-purple-600">
-                        <input v-model="item.text" placeholder="e.g. Dice onions..." class="flex-grow bg-transparent border-none focus:ring-0">
-                        <button @click="miseEnPlace.splice(idx, 1)" class="no-print text-slate-300 hover:text-red-400"><i class="ph ph-trash"></i></button>
+                    <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-3">Mise en Place</h2>
+                    <div v-for="(item, index) in miseEnPlace" :key="index" class="flex gap-3 mb-2">
+                        <input v-model="item.text" placeholder="Prep task..." class="flex-grow bg-transparent border-none focus:ring-0">
+                        <button @click="miseEnPlace.splice(index, 1)" class="no-print text-slate-300 hover:text-red-400"><i class="ph ph-x"></i></button>
                     </div>
-                    <button @click="miseEnPlace.push({text: ''})" class="mt-4 text-purple-600 text-xs font-black no-print">+ ADD PREP STEP</button>
+                    <button @click="miseEnPlace.push({text: ''})" class="mt-4 text-purple-600 text-xs font-black no-print">+ ADD TASK</button>
                 </section>
 
                 <section class="app-section">
                     <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-3">Ingredients</h2>
-                    <div v-for="(ing, idx) in ingredients" :key="idx" class="flex items-center gap-3 mb-3">
-                        <input v-model.number="ing.amount" type="number" step="any" class="w-16 text-right font-mono font-bold text-purple-600 bg-slate-50 p-1 rounded">
-                        <input v-model="ing.unit" placeholder="Unit" class="w-14 text-xs font-black uppercase text-slate-500 bg-transparent border-none">
-                        <input v-model="ing.name" placeholder="Item name..." class="flex-grow bg-transparent border-none">
-                        <button @click="ingredients.splice(idx, 1)" class="no-print text-slate-300 hover:text-red-400"><i class="ph ph-trash"></i></button>
+                    <div v-for="(ing, index) in ingredients" :key="index" class="flex items-center gap-3 mb-3">
+                        <input v-model.number="ing.amount" type="number" step="any" class="w-16 text-right font-mono font-bold text-purple-600 bg-white p-1 rounded">
+                        <input v-model="ing.unit" placeholder="Unit" class="w-12 text-xs font-black uppercase text-slate-500 bg-transparent">
+                        <input v-model="ing.name" placeholder="Ingredient..." class="flex-grow bg-transparent">
+                        <button @click="ingredients.splice(index, 1)" class="no-print text-slate-300 hover:text-red-400"><i class="ph ph-trash"></i></button>
                     </div>
                     <button @click="addIngredient" class="mt-4 text-purple-600 text-xs font-black no-print">+ ADD INGREDIENT</button>
                 </section>
 
                 <section class="app-section">
-                    <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-3">Gallery</h2>
-                    <div class="grid grid-cols-2 gap-4">
+                    <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-3">Photos</h2>
+                    <div class="grid grid-cols-2 gap-6">
                         <div v-for="(img, idx) in images" :key="idx" class="relative group">
-                            <div class="photo-card"><img :src="img" class="w-full h-full object-cover rounded-sm"></div>
-                            <button @click="images.splice(idx, 1)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 no-print opacity-0 group-hover:opacity-100 shadow-lg">×</button>
+                            <div class="photo-card"><img :src="img" class="w-full h-full object-cover"></div>
+                            <button @click="images.splice(idx, 1)" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 no-print opacity-0 group-hover:opacity-100">×</button>
                         </div>
-                        <button @click="$refs.imgUp.click()" class="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:border-purple-300 hover:text-purple-400 transition-all no-print">
+                        <button @click="$refs.imgUp.click()" class="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-slate-400 hover:text-purple-400 no-print">
                             <i class="ph ph-camera text-3xl mb-2"></i>
-                            <span class="text-[10px] font-bold uppercase">Add Photo</span>
+                            <span class="text-[10px] font-bold">ADD PHOTO</span>
                         </button>
                         <input type="file" ref="imgUp" multiple accept="image/*" class="hidden" @change="handleImage">
                     </div>
                 </section>
             </div>
 
-            <div class="space-y-8">
+            <div class="space-y-10">
                 <section class="app-section">
                     <h2 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 border-b pb-3">Method</h2>
-                    <div v-for="(step, idx) in method" :key="idx" class="flex gap-4 mb-6 items-start">
-                        <span class="text-3xl font-black text-slate-200 mt-1">{{ idx + 1 }}</span>
-                        <textarea v-model="step.text" rows="3" class="flex-grow p-4 bg-white rounded-xl border border-slate-100 focus:border-purple-200 outline-none resize-none" placeholder="Step instructions..."></textarea>
-                        <button @click="method.splice(idx, 1)" class="no-print text-slate-300 hover:text-red-400 mt-4"><i class="ph ph-trash"></i></button>
+                    <div v-for="(step, index) in method" :key="index" class="flex gap-4 mb-6 items-start">
+                        <span class="text-3xl font-black text-slate-200 mt-1 w-8">{{ index + 1 }}</span>
+                        <textarea v-model="step.text" rows="3" class="flex-grow p-4 bg-white rounded-xl outline-none resize-none border border-slate-50" placeholder="Step instructions..."></textarea>
+                        <button @click="method.splice(index, 1)" class="no-print text-slate-300 hover:text-red-400 mt-4"><i class="ph ph-trash"></i></button>
                     </div>
                     <button @click="addMethod" class="text-purple-600 text-xs font-black no-print">+ ADD STEP</button>
                 </section>
 
                 <section class="app-section bg-amber-50/50 border-amber-100">
-                    <h2 class="text-xs font-black uppercase tracking-widest text-amber-600/50 mb-4 border-b border-amber-100 pb-3">Chef's Notes</h2>
-                    <textarea v-model="notes" rows="4" class="w-full bg-transparent border-none focus:ring-0 placeholder-amber-200" placeholder="Add tips or variations..."></textarea>
+                    <h2 class="text-xs font-black uppercase tracking-widest text-amber-600/40 mb-4">Chef's Notes</h2>
+                    <textarea v-model="notes" rows="4" class="w-full bg-transparent border-none focus:ring-0" placeholder="Tips, substitutions, or variations..."></textarea>
                 </section>
             </div>
         </div>
@@ -183,20 +133,12 @@
 <script>
 const { createApp } = Vue;
 
-// SET YOUR GITHUB INFO HERE
-const GITHUB_USERNAME = 'icheong'; 
-const REPO_NAME = 'my-recipes';
-
 createApp({
     data() {
         return {
             recipeTitle: '',
-            searchQuery: '',
             scale: 1,
             selectedCategory: 'Mains',
-            library: [],
-            loadingLibrary: false,
-            ui: { showLibraryMenu: false },
             categories: [
                 { name: 'Mains', icon: 'ph ph-cooking-pot' },
                 { name: 'Baking', icon: 'ph ph-bread' },
@@ -204,40 +146,13 @@ createApp({
                 { name: 'Breakfast', icon: 'ph ph-egg' }
             ],
             miseEnPlace: [{ text: '' }],
-            ingredients: [{ amount: 0, unit: 'g', name: '' }],
+            ingredients: [{ amount: null, unit: 'g', name: '' }],
             method: [{ text: '' }],
             images: [],
             notes: ''
         }
     },
-    computed: {
-        filteredLibrary() {
-            if (!this.searchQuery) return this.library;
-            return this.library.filter(r => r.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
-        }
-    },
     methods: {
-        toggleLibrary() {
-            this.ui.showLibraryMenu = !this.ui.showLibraryMenu;
-            if (this.ui.showLibraryMenu) this.fetchManifest();
-        },
-        async fetchManifest() {
-            this.loadingLibrary = true;
-            try {
-                const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/recipes.json?t=${Date.now()}`);
-                this.library = await res.json();
-            } catch (e) { console.error("Manifest error", e); }
-            finally { this.loadingLibrary = false; }
-        },
-        async fetchFromGithub(path) {
-            try {
-                const res = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${path}`);
-                const data = await res.json();
-                Object.assign(this, data);
-                this.ui.showLibraryMenu = false;
-                window.scrollTo(0, 0);
-            } catch (e) { alert("Error loading recipe file."); }
-        },
         saveRecipe() {
             const data = JSON.stringify(this.$data);
             const blob = new Blob([data], { type: 'application/json' });
@@ -248,7 +163,7 @@ createApp({
         },
         loadRecipe(e) {
             const reader = new FileReader();
-            reader.onload = (ev) => Object.assign(this, JSON.parse(ev.target.result));
+            reader.onload = (event) => Object.assign(this, JSON.parse(event.target.result));
             reader.readAsText(e.target.files[0]);
         },
         handleImage(e) {
@@ -258,12 +173,8 @@ createApp({
                 reader.readAsDataURL(file);
             });
         },
-        addIngredient() { this.ingredients.push({ amount: 0, unit: 'g', name: '' }); },
-        addMethod() { this.method.push({ text: '' }); },
-        calculateAmount(base) {
-            let val = (parseFloat(base) || 0) * this.scale;
-            return val === 0 ? '' : val.toFixed(1).replace('.0', '');
-        }
+        addIngredient() { this.ingredients.push({ amount: null, unit: 'g', name: '' }); },
+        addMethod() { this.method.push({ text: '' }); }
     }
 }).mount('#app');
 </script>
