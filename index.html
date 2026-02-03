@@ -32,6 +32,7 @@
             pointer-events: none;
         }
 
+        /* Polaroid Image Style */
         .photo-card {
             aspect-ratio: 1/1;
             background: white;
@@ -62,7 +63,7 @@
                 
                 <div class="relative inline-block ml-2">
                     <select @change="fetchGitHubRecipe($event.target.value)" class="appearance-none bg-purple-50 border-none rounded-lg py-1.5 pl-3 pr-8 text-sm font-bold text-purple-700 cursor-pointer focus:ring-2 focus:ring-purple-300">
-                        <option value="" disabled selected>📜 My Recipes</option>
+                        <option value="" disabled selected>📜 Online Recipes</option>
                         <option v-for="file in githubRecipes" :key="file.path" :value="file.download_url">
                             {{ file.name.replace('.json', '') }}
                         </option>
@@ -118,6 +119,7 @@
     </div>
 
     <div class="card bg-white shadow-2xl rounded-[40px] p-10 md:p-16 border border-white/50 relative overflow-hidden">
+        
         <div class="flex flex-col md:flex-row items-start md:items-center gap-6 mb-12">
             <div class="relative no-print group">
                 <div class="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-500 text-4xl shadow-inner">
@@ -127,7 +129,7 @@
                     <option v-for="cat in categories" :key="cat.name" :value="cat.name">{{ cat.name }}</option>
                 </select>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col flex-grow">
                 <span class="text-purple-400 font-bold uppercase tracking-[0.2em] text-xs ml-1">Recipe for...</span>
                 <input v-model="recipeTitle" placeholder="Untitled Recipe" class="text-5xl font-black w-full focus:outline-none border-b-2 border-transparent focus:border-purple-300 pb-2 transition-all bg-transparent">
             </div>
@@ -135,6 +137,31 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div class="space-y-10">
+                
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="photo-card relative group cursor-pointer" @click="$refs.photoInput.click()">
+                        <div class="w-full h-full bg-slate-50 rounded-sm overflow-hidden flex items-center justify-center">
+                            <img v-if="recipeImage" :src="recipeImage" class="w-full h-full object-cover">
+                            <div v-else class="text-slate-300 flex flex-col items-center">
+                                <i class="ph ph-camera text-4xl"></i>
+                                <span class="text-[10px] font-bold mt-2">ADD PHOTO</span>
+                            </div>
+                        </div>
+                        <input type="file" ref="photoInput" @change="handleImage" accept="image/*" class="hidden">
+                    </div>
+                    
+                    <div class="flex flex-col justify-center gap-4">
+                        <div class="bg-purple-50 p-4 rounded-2xl">
+                            <span class="text-[10px] font-black uppercase text-purple-400 block mb-1">Prep Time</span>
+                            <input v-model="prepTime" placeholder="20 mins" class="bg-transparent font-bold text-purple-700 outline-none w-full">
+                        </div>
+                        <div class="bg-orange-50 p-4 rounded-2xl">
+                            <span class="text-[10px] font-black uppercase text-orange-400 block mb-1">Cook Time</span>
+                            <input v-model="cookTime" placeholder="45 mins" class="bg-transparent font-bold text-orange-700 outline-none w-full">
+                        </div>
+                    </div>
+                </div>
+
                 <section class="app-section">
                     <div class="flex justify-between items-center mb-6 border-b border-slate-200 pb-3 cursor-pointer group" @click="ui.showIng = !ui.showIng">
                         <div class="flex items-center gap-3">
@@ -147,8 +174,12 @@
                         <div id="ingredient-list">
                             <div v-for="(ing, index) in ingredients" :key="ing.id" class="drag-row group">
                                 <i class="ph ph-dots-six-vertical drag-handle text-xl no-print"></i>
-                                <div class="w-20 text-right font-mono font-bold text-lg text-purple-600">{{ isQualitative(ing.unit) ? '' : calculateAmount(ing.amount, ing.unit) }}</div>
-                                <div :class="isQualitative(ing.unit) ? 'w-36' : 'w-16'" class="text-sm font-black text-slate-800 uppercase">{{ getDisplayUnit(ing.unit) }}</div>
+                                <div class="w-20 text-right font-mono font-bold text-lg text-purple-600">
+                                    {{ isQualitative(ing.unit) ? '' : calculateAmount(ing.amount, ing.unit) }}
+                                </div>
+                                <div :class="isQualitative(ing.unit) ? 'w-36' : 'w-16'" class="text-sm font-black text-slate-800 uppercase">
+                                    {{ getDisplayUnit(ing.unit) }}
+                                </div>
                                 <input v-model="ing.name" placeholder="Ingredient..." class="flex-grow text-base outline-none bg-transparent border-b border-transparent focus:border-purple-200">
                                 <div class="flex items-center gap-2 no-print opacity-0 group-hover:opacity-100 transition-opacity">
                                     <select v-model="ing.unit" class="text-[10px] font-bold bg-white border rounded p-1 uppercase">
@@ -186,6 +217,16 @@
                         </div>
                     </div>
                 </section>
+
+                <section class="app-section">
+                    <div class="flex items-center gap-3 mb-4 border-b border-slate-200 pb-3 cursor-pointer" @click="ui.showNotes = !ui.showNotes">
+                        <i class="ph text-xl text-purple-400 transition-transform" :class="ui.showNotes ? 'ph-caret-down' : 'ph-caret-right'"></i>
+                        <h2 class="text-xs font-black uppercase tracking-widest text-slate-400">Chef's Notes</h2>
+                    </div>
+                    <div :class="{'section-collapsed': !ui.showNotes}" class="section-content">
+                        <textarea v-model="chefNotes" placeholder="Any extra tips or variations..." class="w-full bg-transparent text-slate-600 italic outline-none min-h-[100px] resize-none"></textarea>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -199,6 +240,10 @@
             return {
                 recipeTitle: '',
                 selectedCategory: 'Main',
+                recipeImage: null,
+                prepTime: '',
+                cookTime: '',
+                chefNotes: '',
                 scale: 1,
                 unitSystem: 'metric',
                 githubRecipes: [],
@@ -217,7 +262,8 @@
                 ],
                 ui: {
                     showIng: true,
-                    showIns: true
+                    showIns: true,
+                    showNotes: true
                 }
             }
         },
@@ -261,6 +307,11 @@
                     }
                 });
             },
+            handleImage(e) {
+                const reader = new FileReader();
+                reader.onload = (event) => this.recipeImage = event.target.result;
+                reader.readAsDataURL(e.target.files[0]);
+            },
             addIngredient() {
                 this.ingredients.push({ id: Date.now(), name: '', amount: 0, unit: 'g' });
             },
@@ -270,11 +321,16 @@
             toggleAll(show) {
                 this.ui.showIng = show;
                 this.ui.showIns = show;
+                this.ui.showNotes = show;
             },
             saveRecipe() {
                 const data = JSON.stringify({
                     recipeTitle: this.recipeTitle,
                     selectedCategory: this.selectedCategory,
+                    recipeImage: this.recipeImage,
+                    prepTime: this.prepTime,
+                    cookTime: this.cookTime,
+                    chefNotes: this.chefNotes,
                     ingredients: this.ingredients,
                     instructions: this.instructions
                 }, null, 2);
